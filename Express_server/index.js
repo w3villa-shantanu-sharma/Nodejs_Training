@@ -1,6 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const userRouter = require('./routes/userRoutes');
 const errorMiddleware = require('./middlewares/errorMiddleware')
+
 
 const app = express();
 
