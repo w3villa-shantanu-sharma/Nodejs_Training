@@ -1,16 +1,16 @@
 const db = require('../DB/dbconfig');
-require('dotenv')
+require('dotenv').config()
 const nodemailer = require('nodemailer');
-const { secret, expiresIn } = require('../config/jwt');
-const jwt = require('jsonwebtoken');
+// const { secret, expiresIn } = require('../config/jwt');
+// const jwt = require('jsonwebtoken');
 
-const sendEmailVerification = async (user) => {
+const sendEmailVerification = async (email ,token) => {
     //token generate
-    const token = jwt.sign({ userId: user.id }, secret, { expiresIn });
+    // const token = jwt.sign({ email : user.email}, secret, { expiresIn });
 
 
     //store in db
-    await db.query('INSERT  INTO email_verifications (user_Id ,token) VALUES (? , ? )', [user.id, token]);
+    // await db.query('INSERT  INTO email_verifications (email ,token) VALUES (? , ? )', [email, token]);
 
 
     //transporter
@@ -30,7 +30,7 @@ const sendEmailVerification = async (user) => {
 
     await transporter.sendMail({
         from: process.env.EMAIL_USER,
-        to: user.email,
+        to: email,
         subject: 'Verify your Email',
         html: `<h3>Click below to verify:</h3><a href="${verificationUrl}">Verify Email</a>`
     });
