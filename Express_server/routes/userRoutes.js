@@ -12,5 +12,6 @@ router.put('/:id' , asyncErrorhandler(updateUsers));
 
 router.post('/register' ,authControllers.registerUser );
 router.get('/verify-email/:token' , authControllers.verifyEmail);
+router.post('/resend-verification' ,authControllers.resendVerificationEmail);
 
 module.exports = router;
