@@ -4,6 +4,9 @@ node_modules/
 # Environment variables and secrets
 .env
 
+# Secrets or config files
+config/twilio.js
+
 # Logs
 logs/
 *.log
