@@ -5,7 +5,7 @@ node_modules/
 .env
 
 # Secrets or config files
-config/twilio.js
+Express_server/config/twilio.js
 
 # Logs
 logs/
