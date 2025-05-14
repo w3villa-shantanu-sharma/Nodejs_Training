@@ -8,7 +8,7 @@ const Messages = {
     ERROR: {
       EMAIL_ALREADY_REGISTERED: 'Email already registered',
       REVERIFIED_EMAIL : 'Verification email already sent. Please check your inbox or try again after 15 minutes.',
-      PENDING_VERFICATION : 'No pending verification found. Please register again.',
+      NOT_PENDING_VERFICATION : 'No pending verification found. Please register again.',
       INVALID_OR_EXPIRED_TOKEN: 'Invalid or expired token',
       SERVER_ERROR: 'Internal server error',
       EMAIL_VERIFICATION_FAILED: 'Email verification failed. Please try again.',

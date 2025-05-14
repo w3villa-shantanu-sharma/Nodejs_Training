@@ -6,6 +6,8 @@ const nodemailer = require('nodemailer');
 
 const sendEmailVerification = async (email ,token) => {
     //token generate
+    console.log("Sending verification email to:", email);
+
     // const token = jwt.sign({ email : user.email}, secret, { expiresIn });
 
 
