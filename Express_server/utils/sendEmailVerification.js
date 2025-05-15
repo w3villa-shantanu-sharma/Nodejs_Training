@@ -19,8 +19,8 @@ const sendEmailVerification = async (email ,token) => {
     const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
+            user: process.env.EMAIL_USER || "shantanusharma9144@gmail.com",
+            pass: process.env.EMAIL_PASS || "pwjn tpac atkn cvrc",
         }
     });
 
@@ -31,7 +31,7 @@ const sendEmailVerification = async (email ,token) => {
 
 
     await transporter.sendMail({
-        from: process.env.EMAIL_USER,
+        from: process.env.EMAIL_USER || "shantanusharma9144@gmail.com",
         to: email,
         subject: 'Verify your Email',
         html: `<h3>Click below to verify:</h3><a href="${verificationUrl}">Verify Email</a>`

@@ -19,7 +19,7 @@ router.post('/send-otp', checkNextAction('MOBILE_OTP'), authControllers.sendMobi
 // Verify OTP
 router.post('/verify-otp', checkNextAction('MOBILE_OTP'), authControllers.verifyMobileOtp);
 
-router.post('/resume-flow', authControllers.resumeFlow);
+// router.post('/resume-flow', authControllers.resumeFlow);
 
 
 module.exports = router;
