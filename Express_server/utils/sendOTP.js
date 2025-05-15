@@ -1,5 +1,11 @@
+require('dotenv').config();
 const twilio = require('twilio');
-const { accountSid, authToken, from } = require('../config/twilio');
+
+// Load credentials from environment variables
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const from = process.env.TWILIO_PHONE_NUMBER;
+
 const client = twilio(accountSid, authToken);
 
 module.exports = async function sendOtp(phone, otp) {
@@ -14,6 +20,6 @@ module.exports = async function sendOtp(phone, otp) {
     return message;
   } catch (error) {
     console.error("Twilio error:", error.message);
-    throw error; // Rethrow so your main route can handle it if needed
+    throw error;
   }
 };
