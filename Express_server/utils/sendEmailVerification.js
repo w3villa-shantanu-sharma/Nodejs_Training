@@ -1,5 +1,5 @@
 const db = require('../DB/dbconfig');
-require('dotenv').config()
+// require('dotenv').config()
 const nodemailer = require('nodemailer');
 // const { secret, expiresIn } = require('../config/jwt');
 // const jwt = require('jsonwebtoken');
@@ -27,7 +27,8 @@ const sendEmailVerification = async (email ,token) => {
     console.log(process.env.EMAIL_USER);
     
 
-    const verificationUrl = `http://localhost:4000/api/users/verify-email/${token}`;
+// uses token as query param
+const verificationUrl = `http://localhost:4000/api/users/verify-email/${token}`;
 
 
     await transporter.sendMail({

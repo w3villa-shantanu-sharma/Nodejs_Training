@@ -7,6 +7,12 @@ const newAuthControllers = require('../controllers/newAuthController');
 const fixedWindowRateLimiter = require('../middlewares/rateLimiter');
 const authenticate = require('../middlewares/authenciate');
 
+const upload = require('../middlewares/uploadMiddleware');
+const userController = require('../controllers/userControllers');
+
+const { getCurrentUser } = require('../controllers/userControllers');
+
+
 // router.get('/' , asyncErrorhandler(getUsers));
 // router.get('/:id' , asyncErrorhandler(getUsersbyId));
 // router.post('/' , asyncErrorhandler(createUser));
@@ -31,7 +37,7 @@ const otpLimiter = fixedWindowRateLimiter({
   // Limit registration attempts per IP to 10 per hour
   const registerLimiter = fixedWindowRateLimiter({
     keyGenerator: (req) => req.ip,
-    maxRequests: 10,
+    maxRequests: 20,
     windowSizeInSeconds: 60 * 60,
     message: 'Too many registration attempts. Try again in an hour.'
   });
@@ -39,6 +45,8 @@ const otpLimiter = fixedWindowRateLimiter({
 
 router.post('/register' ,registerLimiter,newAuthControllers.registerUser );
 router.get('/verify-email/:token' , newAuthControllers.verifyEmail);
+// router.get('/verify-email' , newAuthControllers.verifyEmail);
+
 router.post('/resend-verification' ,resendEmailLimiter,newAuthControllers.resendVerificationEmail);
 router.post('/login' ,newAuthControllers.loginUser);
 
@@ -47,6 +55,34 @@ router.post('/send-otp', otpLimiter,checkNextAction('MOBILE_OTP'), newAuthContro
 // Verify OTP
 router.post('/verify-otp', checkNextAction('MOBILE_OTP'), newAuthControllers.verifyMobileOtp);
 router.post('/complete-profile', authenticate, newAuthControllers.completeProfile);
+
+
+router.post(
+  '/profile/upload',
+  authenticate,
+  upload.single('profilePicture'),
+  userController.uploadProfilePicture
+);
+
+// routes/userRoutes.js
+router.put(
+  '/profile/address',
+  authenticate,
+  userController.updateAddress
+);
+
+router.get(
+  '/profile/download',
+  authenticate,
+  userController.downloadProfile
+);
+
+
+
+
+router.get('/me', authenticate, getCurrentUser);
+
+
 
 
 // router.post('/resume-flow', authControllers.resumeFlow);
