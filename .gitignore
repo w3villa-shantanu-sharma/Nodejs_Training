@@ -40,3 +40,7 @@ coverage/
 # Optional: dotenv variants
 .env
 package-lock.json
+package.json
+.package-lock.json
+backend-lock.json
+
