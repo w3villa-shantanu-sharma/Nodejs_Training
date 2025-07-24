@@ -61,7 +61,7 @@ exports.registerUser = async (req, res) => {
       method: "EMAIL",
     },
     secret,
-    { expiresIn }
+    { expiresIn: '15m' }
   );
 
   if (existingTemp.length && existingTemp[0].is_verified) {
@@ -75,10 +75,13 @@ exports.registerUser = async (req, res) => {
     name,
     email,
     password: hashedPassword,
-    next_action : "Email_VERIFICATION",
+    next_action : "EMAIL_VERIFICATION",
   };
 
-    await userRepo.insertUser(userData);
+  await userRepo.insertUser({
+    ...userData,
+    is_active: false
+  });
 
 
   if (existingTemp.length) {
@@ -87,23 +90,21 @@ exports.registerUser = async (req, res) => {
     const now = new Date();
     const diffMinutes = (now - lastUpdated) / 1000 / 60;
 
-    if (diffMinutes < 15) {
+     if (diffMinutes < 15) {
       return res.status(400).json({ message: Messages.ERROR.REVERIFIED_EMAIL });
     }
 
     await userRepo.updateEmailVerification(email, userData, token);
-    await sendEmailVerification(email, token);
-    return res
-      .status(200)
-      .json({ message: Messages.SUCCESS.RESEND_VERIFY_LINK });
+  } else {
+    // Insert new verification record
+    await userRepo.insertEmailVerification({
+      uuid: userUUID,
+      email,
+      data: userData,
+      token,
+    });
   }
 
-  await userRepo.insertEmailVerification({
-    uuid: userUUID,
-    email,
-    data: userData,
-    token,
-  });
   await sendEmailVerification(email, token);
   return res.status(201).json({
     message: Messages.SUCCESS.USER_REGISTERED,
@@ -113,11 +114,15 @@ exports.registerUser = async (req, res) => {
 
 // Verify Email
 exports.verifyEmail = async (req, res) => {
-  const token  = req.params;
+  const { token } = req.params;
+
+  console.log("Verifying token :" , token);
 
   try {
     const decoded = jwt.verify(token, secret);
     const email = decoded.email;
+
+    console.log("Decoded email:" , email);
 
     const [verification] = await userRepo.getEmailVerificationByEmail(email);
     if (!verification || verification.token !== token) {
@@ -125,6 +130,8 @@ exports.verifyEmail = async (req, res) => {
         .status(StatusCodes.BAD_REQUEST)
         .json({ message: Messages.ERROR.INVALID_OR_EXPIRED_TOKEN });
     }
+
+    console.log("Verification record : " , verification);
 
     //  Already verified
     if (verification.is_verified) {
@@ -153,9 +160,12 @@ exports.verifyEmail = async (req, res) => {
     // if (existingUser.length) {
     //   return res.status(400).json({ message: "Email already verified." });
     // }
-     const [user] = await userRepo.getUserByEmail(email);
-    await userRepo.updateUserNextAction(user.uuid, "MOBILE_OTP");
-
+     
+    // Update user's next_action
+    const [user] = await userRepo.getUserByEmail(email);
+    if (user) {
+      await userRepo.updateUserNextAction(user.uuid, "MOBILE_OTP");
+    }
     // await userRepo.insertUser(userData);
     // await userRepo.markEmailAsVerified(email);
 
@@ -170,7 +180,7 @@ exports.verifyEmail = async (req, res) => {
   } catch (err) {
     return res
       .status(StatusCodes.UNAUTHORIZED)
-      .json({ message: Messages.ERROR.INVALID_OR_EXPIRED_TOKEN });
+      .json({ message: Messages.ERROR.INVALID_OR_EXPIRED_TOKEN, success : false });
   }
 };
 
@@ -340,9 +350,14 @@ exports.verifyMobileOtp = async (req, res) => {
   await userRepo.updateUserPhoneAndStep(user.uuid, latestOtp.phone);
   await userRepo.markOtpVerified(user.uuid);
 
+  const token = jwt.sign({ uuid: user.uuid }, secret, { expiresIn });
+
+
   return res.status(200).json({
     message: Messages.SUCCESS.Mobile_VERIFIED_DONE,
     next_action: "PROFILE_UPDATED",
+    email: email,
+    token: token, 
   });
 };
 

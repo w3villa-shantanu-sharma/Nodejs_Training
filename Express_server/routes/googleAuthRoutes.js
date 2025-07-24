@@ -9,27 +9,39 @@ const router = express.Router();
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 // Google callback
-// Google callback
 router.get(
   '/google/callback',
   passport.authenticate('google', { session: false }),
-  (req, res) => {
-    const user = req.user;
-    const token = jwt.sign(
-      { uuid: user.uuid, email: user.email, method: 'GOOGLE' },
-      secret,
-      { expiresIn }
-    );
-
-    console.log("Google login successful, user:", user);
-
-    //  Redirect to frontend with token and user info in query string
-    const redirectUrl = `http://localhost:5173/oauth-success?token=${token}&name=${encodeURIComponent(
-      user.name
-    )}&email=${encodeURIComponent(user.email)}&uuid=${user.uuid}`;
-    return res.redirect(redirectUrl);
-  }
+  handleGoogleCallback
 );
+
+// Handler function for Google OAuth callback
+async function handleGoogleCallback(req, res) {
+  if (!req.user) {
+    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=oauth_failed`);
+  }
+
+  try {
+    const user = req.user;
+    const token = jwt.sign({ uuid: user.uuid }, secret, { expiresIn });
+
+    // Determine next action based on user completion status
+    let redirectUrl;
+
+    if (user.next_action) {
+      // User needs to complete onboarding steps
+      redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/oauth-success?token=${token}&next_action=${user.next_action}&email=${encodeURIComponent(user.email)}`;
+    } else {
+      // User profile is complete
+      redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/oauth-success?token=${token}&next_action=null`;
+    }
+
+    res.redirect(redirectUrl);
+  } catch (error) {
+    console.error('Google callback error:', error);
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=oauth_failed`);
+  }
+}
 
 // // Initiate Facebook login
 // router.get('/facebook', passport.authenticate('facebook', { scope: ['email'] }));

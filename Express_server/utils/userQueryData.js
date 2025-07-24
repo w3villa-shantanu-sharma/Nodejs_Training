@@ -1,4 +1,3 @@
-
 const db = require('../DB/dbconfig');
 
 // USERS
