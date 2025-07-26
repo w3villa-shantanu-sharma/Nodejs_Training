@@ -4,6 +4,8 @@ const s3 = require('../utils/storjClient');
 const crypto = require('crypto');
 const userRepo = require('../utils/userQueryData');
 const razorpay = require('../config/razorpay');
+// Add this line to import prices and durations
+const { prices, durations } = require('../utils/plans');
 
 exports.uploadProfilePicture = async (req, res) => {
   const userUUID = req.user?.uuid;
@@ -13,7 +15,7 @@ exports.uploadProfilePicture = async (req, res) => {
   }
 
   const file = req.file;
-  const fileName = `profile-pictures/${userUUID}-${Date.now()}-${file.originalname}`;
+  const fileName = `profile-pictures/${userUUID}-${Date.now()}-${file.originalname.replace(/\s+/g, '-')}`;
 
   try {
     const result = await s3.upload({
@@ -21,11 +23,14 @@ exports.uploadProfilePicture = async (req, res) => {
       Key: fileName,
       Body: file.buffer,
       ContentType: file.mimetype,
-      ACL: 'public-read', // or 'private' and use signed URLs
+      ACL: 'public-read',
     }).promise();
 
-    // Update DB with image URL
-    const imageUrl = result.Location;
+    // Create a URL that points to our own API endpoint
+    const baseUrl = process.env.API_URL || 'http://localhost:4000/api';
+    const imageUrl = `${baseUrl}/users/profile-image/${fileName.split('/').pop()}`;
+    
+    // Update DB with the proxied URL
     await userRepo.updateUserProfilePicture(userUUID, imageUrl);
 
     return res.status(200).json({
@@ -98,30 +103,62 @@ exports.downloadProfile = async (req, res) => {
 exports.createOrder = async (req, res) => {
   const { plan } = req.body;
   const user = req.user;
-
-  if (!prices[plan]) {
-    return res.status(400).json({ message: 'Invalid plan selected' });
-  }
-
-  const amount = prices[plan];
-
-  const options = {
-    amount,
-    currency: 'INR',
-    receipt: `receipt_${Date.now()}`,
-    payment_capture: 1,
-    notes: {
-      user_uuid: user.uuid,
-      plan
-    }
-  };
-
+  
+  console.log('Creating order for plan:', plan);
+  
   try {
+    // Verify the plan is valid
+    if (!prices || !Object.keys(prices).includes(plan)) {
+      console.error(`Invalid plan: ${plan}, Available plans:`, prices ? Object.keys(prices) : 'No plans defined');
+      return res.status(400).json({ message: 'Invalid plan selected' });
+    }
+    
+    console.log('Available plans:', Object.keys(prices));
+    console.log('Selected plan price:', prices[plan]);
+    
+    const amount = prices[plan];
+    
+    // Check if Razorpay credentials are configured
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_SECRET) {
+      console.error('Razorpay API credentials are missing!');
+      return res.status(500).json({ message: 'Payment service is not configured properly' });
+    }
+    
+    const options = {
+      amount,
+      currency: 'INR',
+      receipt: `receipt_${Date.now()}`,
+      payment_capture: 1,
+      notes: {
+        user_uuid: user.uuid,
+        plan
+      }
+    };
+    
+    console.log('Attempting to create Razorpay order with options:', {
+      amount: options.amount,
+      currency: options.currency,
+      receipt: options.receipt
+    });
+    
     const order = await razorpay.orders.create(options);
+    console.log('Razorpay order created successfully:', order.id);
+    
     res.status(200).json({ success: true, order });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to create Razorpay order' });
+    console.error('Razorpay order creation failed:', err);
+    
+    if (err.statusCode === 401) {
+      return res.status(500).json({ 
+        message: 'Payment provider authentication failed. Please contact support.',
+        error: 'API_AUTH_ERROR'
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Failed to create payment order', 
+      error: err.message || 'Unknown error'
+    });
   }
 };
 
@@ -157,14 +194,54 @@ exports.getCurrentUser = async (req, res) => {
   try {
     const user = await userRepo.getUserByUUID(req.user.uuid);
     if (!user) {
-      // If user not found, return a clear error
       return res.status(401).json({ message: "User not found" });
     }
+
+    console.log("User data from DB:", user); // Debug log to see user data
+
     // Optionally, remove sensitive fields before sending
     const { password, ...userData } = user;
+    
+    // Make sure profile_picture is properly formatted
+    if (userData.profile_picture) {
+      // If using S3/Storj, ensure the URL is absolute
+      if (!userData.profile_picture.startsWith('http')) {
+        userData.profile_picture = `${process.env.STORAGE_URL}/${userData.profile_picture}`;
+      }
+    }
+
     res.json(userData);
   } catch (err) {
     console.error("Error in getCurrentUser:", err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Add this function to proxy profile images
+exports.getProfileImage = async (req, res) => {
+  const { filename } = req.params;
+  const key = `profile-pictures/${filename}`;
+
+  try {
+    const params = {
+      Bucket: process.env.STORJ_BUCKET,
+      Key: key,
+    };
+
+    // Get the object from S3/Storj
+    const data = await s3.getObject(params).promise();
+    
+    // Set appropriate headers
+    res.set('Content-Type', data.ContentType);
+    res.set('Content-Length', data.ContentLength);
+    res.set('Cache-Control', 'max-age=86400'); // Cache for 1 day
+    
+    // Send the image data
+    res.send(data.Body);
+  } catch (err) {
+    console.error('Error serving profile image:', err);
+    
+    // Return a default avatar on error
+    res.redirect('/default-avatar.png');
   }
 };

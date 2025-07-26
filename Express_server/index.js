@@ -8,6 +8,7 @@ require('./utils/expirePlans');
 const userRouter = require('./routes/userRoutes');
 const googleAuthRoutes = require('./routes/googleAuthRoutes');
 const podcastRouter = require('./routes/podcast');
+const paymentRouter = require('./routes/payment');
 const errorMiddleware = require('./middlewares/errorMiddleware');
 
 const app = express();
@@ -32,13 +33,10 @@ app.use((req, res, next) => {
 });
 
 //  Routes
-
-
 app.use('/api/users', userRouter);
 app.use('/api/users/auth', googleAuthRoutes);
 app.use('/api/podcast', podcastRouter);
-
-
+app.use('/api/payment', paymentRouter);
 
 app.use(errorMiddleware);
 

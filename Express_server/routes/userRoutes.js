@@ -77,8 +77,8 @@ router.get(
   userController.downloadProfile
 );
 
-
-
+// Add this route to serve images
+router.get('/profile-image/:filename', userController.getProfileImage);
 
 router.get('/me', authenticate, getCurrentUser);
 

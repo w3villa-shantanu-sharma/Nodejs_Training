@@ -1,11 +1,10 @@
-// routes/paymentRoutes.js
+// routes/payment.js
 const express = require('express');
 const router = express.Router();
-const userControllers = require('../controllers/userControllers');
-const authMiddleware = require('../middlewares/authenticate');
-
-// Routes
-router.post('/create-order', authMiddleware, userControllers.createOrder);
-router.post('/verify', authMiddleware, userControllers.verifyPayment);
-
+const userController = require('../controllers/userControllers');
+const authenticate = require('../middlewares/authenciate');
+// Payment routes - REMOVED duplicate "/payment" prefix
+router.post('/create-order', authenticate, userController.createOrder);
+router.post('/verify', authenticate, userController.verifyPayment);
+// router.post('/payment/verify', authenticate, userController.verifyPayment);
 module.exports = router;
