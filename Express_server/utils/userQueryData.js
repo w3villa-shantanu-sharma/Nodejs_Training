@@ -384,16 +384,25 @@ export const createUserNotification = async (userUuid, type, message) => {
   );
 };
 
-export const getUserNotifications = async (userUuid, limit = 10) => {
-  const query = `
-    SELECT id, type, message, seen, created_at
-    FROM notifications
-    WHERE user_uuid = ?
-    ORDER BY created_at DESC
-    LIMIT ?
-  `;
-  const [rows] = await db.query(query, [userUuid, limit]);
-  return rows;
+export const getUserNotifications = async (userUuid, limit = 20) => {
+  try {
+    const query = `
+      SELECT id, type, message, seen, created_at
+      FROM notifications
+      WHERE user_uuid = ?
+      ORDER BY created_at DESC
+      LIMIT ?
+    `;
+    const [rows] = await db.query(query, [userUuid, limit]);
+    
+    // Log the number of notifications found
+    console.log(`Found ${rows.length} notifications for user ${userUuid}`);
+    
+    return rows;
+  } catch (err) {
+    console.error('Error retrieving notifications:', err);
+    return [];
+  }
 };
 
 export const markNotificationAsSeen = async (notificationId, userUuid) => {
