@@ -8,24 +8,19 @@ import { config } from '../config/environment.js';
 
 const router = express.Router();
 
-// Helper function to create and store token (same as in newAuthController)
+// Helper function to create and store token
 const createAndStoreToken = async (userUuid, email, deviceInfo = null) => {
-  // Create token using the expiresIn from config (which is now 24h)
   const token = jwt.sign(
     { userUUID: userUuid, uuid: userUuid, email: email }, 
     secret, 
     { expiresIn }
   );
   
-  // Calculate expiration time based on the same duration as the JWT
-  // Convert the string "24h" to milliseconds
   const expiresInMs = expiresIn.includes('h') 
     ? parseInt(expiresIn) * 60 * 60 * 1000 
-    : 24 * 60 * 60 * 1000; // Default to 24 hours
-  
+    : 24 * 60 * 60 * 1000;
+    
   const expiresAt = new Date(Date.now() + expiresInMs);
-  
-  // Store token hash in database with matching expiration
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   await userRepo.storeToken(userUuid, tokenHash, 'ACCESS', expiresAt, deviceInfo);
   
@@ -43,7 +38,7 @@ router.get('/google/callback',
 // Handler function for Google OAuth callback
 async function handleGoogleCallback(req, res) {
   if (!req.user) {
-    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=oauth_failed`);
+    return res.redirect(`${config.FRONTEND_URL}/login?error=oauth_failed`);
   }
 
   try {
@@ -56,14 +51,14 @@ async function handleGoogleCallback(req, res) {
     // Set the token as HTTP-only cookie
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: config.COOKIE_SECURE,
+      sameSite: config.COOKIE_SAMESITE,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
     });
 
     // Determine next action based on user completion status
     let redirectUrl;
-
+    
     if (user.next_action) {
       // User needs to complete onboarding steps
       redirectUrl = `${config.FRONTEND_URL}/oauth-success?next_action=${user.next_action}&email=${encodeURIComponent(user.email)}`;
@@ -72,10 +67,11 @@ async function handleGoogleCallback(req, res) {
       redirectUrl = `${config.FRONTEND_URL}/oauth-success?next_action=null`;
     }
 
-    res.redirect(redirectUrl);
+    console.log('Redirecting to:', redirectUrl);
+    return res.redirect(redirectUrl);
   } catch (error) {
     console.error('Google callback error:', error);
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=oauth_failed`);
+    return res.redirect(`${config.FRONTEND_URL}/login?error=oauth_failed`);
   }
 }
 
