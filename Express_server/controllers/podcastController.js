@@ -1,13 +1,30 @@
-const redisClient = require("../utils/redisClient");
-const podcastIndexClient = require("../utils/podcastIndexClient");
-const userRepo = require("../utils/userQueryData");
+import redisClient from "../utils/redisClient.js";
+import podcastIndexClient from "../utils/podcastIndexClient.js";
+import * as userRepo from "../utils/userQueryData.js";
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-exports.getMine = async (req, res) => {
+// Get current directory for ES6 modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load fallback data
+let fallbackPodcasts = [];
+try {
+  const fallbackPath = join(__dirname, '../data/fallback-podcasts.json');
+  fallbackPodcasts = JSON.parse(readFileSync(fallbackPath, 'utf8'));
+  console.log(`📦 Loaded ${fallbackPodcasts.length} fallback podcasts`);
+} catch (err) {
+  console.warn('⚠️ Could not load fallback podcasts:', err.message);
+}
+
+export const getMine = async (req, res) => {
   const pages = await userRepo.findByUserUuid(req.user.uuid);
   res.json(pages);
 };
 
-exports.createPage = async (req, res) => {
+export const createPage = async (req, res) => {
   const { username, spotify_link, apple_link, embed_code } = req.body;
   await userRepo.createPage({
     uuid: req.user.uuid,
@@ -19,18 +36,25 @@ exports.createPage = async (req, res) => {
   res.sendStatus(201);
 };
 
-exports.getPublic = async (req, res) => {
-  const page = await userRepo.findByUsername(req.params.username);
+export const getPublic = async (req, res) => {
+  const page = await userRepo.findByUsernameProfile(req.params.username);
   if (!page) return res.sendStatus(404);
   res.json(page);
 };
 
-exports.trackClick = async (req, res) => {
+export const trackClick = async (req, res) => {
   await userRepo.incrementClick(req.params.username);
   res.sendStatus(204);
 };
 
-exports.getPublicProfiles = async (req, res) => {
+export const trackListenClick = async (req, res) => {
+  const { podcastId } = req.params;
+  // In a real application, you would save this to a database
+  console.log(`▶️ Click tracked for podcast ID: ${podcastId}`);
+  res.sendStatus(204); // Send No Content response
+};
+
+export const getPublicProfiles = async (req, res) => {
   try {
     const profiles = await userRepo.getPublicPodcastProfiles();
     res.status(200).json(profiles);
@@ -41,72 +65,55 @@ exports.getPublicProfiles = async (req, res) => {
 };
 
 
-// --- REWRITTEN FUNCTION ---
-exports.getPublicPodcastFree = async (req, res) => {
+export const getPublicPodcastFree = async (req, res) => {
   const query = req.query.q || '';
   const redisKey = `podcast-index:${query || 'trending'}`;
 
   try {
+    // Try getting from cache first (but don't log every cache hit)
     const cached = await redisClient.get(redisKey);
     if (cached) {
-      console.log("✅ Cached served:", redisKey);
       return res.status(200).json(JSON.parse(cached));
     }
 
+    // If not in cache, make API request
     let podcasts = [];
-    let response;
+    const endpoint = query 
+      ? `/search/byterm?q=${encodeURIComponent(query)}&max=12`
+      : '/podcasts/trending?max=12';
+    
+    const response = await podcastIndexClient.get(endpoint);
+    
+    // Process response data
+    podcasts = (response.data.feeds || []).map(p => ({
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      thumbnail: p.image,
+      listenNotes: p.link,
+    }));
 
-    if (query) {
-      // --- Use Podcast Index Search ---
-      response = await podcastIndexClient.get(`/search/byterm?q=${encodeURIComponent(query)}&max=12`);
-      podcasts = (response.data.feeds || []).map(p => ({
-        id: p.id,
-        title: p.title,
-        description: p.description,
-        thumbnail: p.image,
-        listenNotes: p.link, // Use the general link
-      }));
-    } else {
-      // --- Use Podcast Index Trending ---
-      response = await podcastIndexClient.get('/podcasts/trending?max=12');
-      podcasts = (response.data.feeds || []).map(p => ({
-        id: p.id,
-        title: p.title,
-        description: p.description,
-        thumbnail: p.image,
-        listenNotes: p.link,
-      }));
+    // Only cache if we got real data
+    if (podcasts.length > 0) {
+      await redisClient.setEx(redisKey, 3600, JSON.stringify(podcasts));
     }
-
-    await redisClient.setEx(redisKey, 3600, JSON.stringify(podcasts)); // Cache for 1 hour
-    console.log("🔄 Fetched & cached from Podcast Index:", redisKey);
+    
     return res.status(200).json(podcasts);
-
   } catch (err) {
-    console.error("❌ Podcast Index API error:", 
-      err.response?.data?.description || err.message);
+    console.error("❌ Error fetching podcasts:", err.message);
     
-    // Return cached data as fallback if available
-    try {
-      const cachedFallback = await redisClient.get('podcast-index:fallback');
-      if (cachedFallback) {
-        console.log("⚠️ Using fallback cache due to API error");
-        return res.status(200).json(JSON.parse(cachedFallback));
-      }
-    } catch (cacheErr) {
-      console.error("Cache fallback also failed:", cacheErr);
+    // Use fallback data only when API fails
+    if (fallbackPodcasts.length > 0) {
+      console.log("⚠️ Using fallback podcast data due to API failure");
+      return res.status(200).json(fallbackPodcasts);
     }
     
-    // Return empty array as last resort
+    // If no fallback available, return empty array with success status
     return res.status(200).json([]);
   }
 };
 
-
-// --- REWRITTEN FUNCTION ---
-exports.getPlaylists = async (req, res) => {
-  // The concept of "My Playlists" is specific to ListenNotes.
-  // We will simulate this by fetching trending podcasts as a default.
+export const getPlaylists = async (req, res) => {
   try {
     const response = await podcastIndexClient.get('/podcasts/trending?max=10');
     const playlists = (response.data.feeds || []).map(p => ({
@@ -114,18 +121,31 @@ exports.getPlaylists = async (req, res) => {
       title: p.title,
       description: p.description,
       thumbnail: p.image,
-      listennotes_url: p.link,
+      link: p.link, // Changed from listennotes_url
+      total: Math.floor(Math.random() * 50) + 10, // Mock episode count
     }));
     return res.status(200).json(playlists);
   } catch (err) {
-    console.error("❌ Failed to fetch trending for playlists:", err.message);
-    return res.status(500).json({ message: "Playlist fetch error", error: err.message });
+    console.error("❌ Failed to fetch playlists:", err.message);
+    
+    // Use fallback for playlists too
+    if (fallbackPodcasts.length > 0) {
+      const mockPlaylists = fallbackPodcasts.slice(0, 6).map((p, index) => ({
+        ...p,
+        id: `playlist_${index}`,
+        total: Math.floor(Math.random() * 30) + 5,
+      }));
+      return res.status(200).json(mockPlaylists);
+    }
+    
+    return res.status(500).json({ 
+      message: "Playlist fetch error", 
+      error: err.message 
+    });
   }
 };
 
-
-// --- REWRITTEN FUNCTION ---
-exports.searchPodcasts = async (req, res) => {
+export const searchPodcasts = async (req, res) => {
   const query = req.query.q;
   if (!query) {
     return res.status(400).json({ message: 'Search query is required' });
@@ -143,45 +163,19 @@ exports.searchPodcasts = async (req, res) => {
     res.status(200).json(episodes);
   } catch (err) {
     console.error("❌ Search error:", err.message);
-    res.status(500).json({ message: 'Failed to search podcasts', error: err.message });
+    
+    // Filter fallback data for search
+    if (fallbackPodcasts.length > 0) {
+      const filtered = fallbackPodcasts.filter(p => 
+        p.title?.toLowerCase().includes(query.toLowerCase()) ||
+        p.description?.toLowerCase().includes(query.toLowerCase())
+      );
+      return res.status(200).json(filtered.slice(0, 12));
+    }
+    
+    res.status(500).json({ 
+      message: 'Failed to search podcasts', 
+      error: err.message 
+    });
   }
 };
-
-
-// controllers/podcastSearchController.js
-
-// exports.searchStarWarsEpisodes = async (req, res) => {
-//   try {
-//     const response = await lnClient.search({
-//       q:               'star wars',
-//       type:            'episode',
-//       len_min:         10,
-//       len_max:         30,
-//       genre_ids:       '68,82',
-//       language:        'English',
-//       safe_mode:       0,
-//       page_size:       10,
-//       sort_by_date:    0,
-//       only_in:         'title,description',
-//       offset:          0,
-//       published_before: 1580172454000 // example filter
-//     });
-
-//     // Map to a slim format your frontend wants
-//     const results = response.data.results.map(ep => ({
-//       id:          ep.id,
-//       title:       ep.title_original,
-//       podcast:     ep.podcast_title_original,
-//       thumbnail:   ep.thumbnail,
-//       audio:       ep.audio,
-//       listenNotes: ep.listennotes_url,
-//       description: ep.description_original,
-//       audio_length_sec: ep.audio_length_sec
-//     }));
-
-//     res.status(200).json(results);
-//   } catch (err) {
-//     console.error('Podcast search error:', err.message);
-//     res.status(500).json({ message: 'Search failed' });
-//   }
-// };

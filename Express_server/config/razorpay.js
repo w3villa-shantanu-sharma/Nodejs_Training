@@ -1,4 +1,4 @@
-const Razorpay = require('razorpay');
+import Razorpay from 'razorpay';
 
 // Add error handling and logging for initialization
 let razorpay;
@@ -15,7 +15,6 @@ try {
   console.log('✅ Razorpay initialized successfully');
 } catch (err) {
   console.error('❌ Failed to initialize Razorpay:', err);
-  // Create a dummy instance that will throw clear errors when used
   razorpay = {
     orders: {
       create: () => Promise.reject(new Error('Razorpay not properly initialized')),
@@ -23,4 +22,4 @@ try {
   };
 }
 
-module.exports = razorpay;
+export default razorpay;

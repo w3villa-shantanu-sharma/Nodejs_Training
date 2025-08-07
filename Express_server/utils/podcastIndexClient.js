@@ -1,55 +1,63 @@
-const crypto = require('crypto');
-const axios = require('axios');
+import crypto from 'crypto';
+import axios from 'axios';
+import https from 'https';
+import dotenv from 'dotenv';
 
-// Get API credentials
+dotenv.config();
+
 const apiKey = process.env.PODCAST_INDEX_KEY;
-let apiSecret = process.env.PODCAST_INDEX_SECRET;
+const apiSecret = process.env.PODCAST_INDEX_SECRET;
 
-// Remove surrounding quotes if present
-if (apiSecret && apiSecret.startsWith('"') && apiSecret.endsWith('"')) {
-  apiSecret = apiSecret.slice(1, -1);
-}
-
+// Only log once on startup
 if (!apiKey || !apiSecret) {
-  console.error('❌ Podcast Index API key or secret is missing in environment variables!');
+  console.error('❌ Missing Podcast Index API credentials in .env file');
 }
 
-console.log("PodcastIndex API Key:", apiKey);
-console.log("PodcastIndex API Secret (first 8 chars):", apiSecret ? apiSecret.substring(0, 8) : "MISSING");
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false
+});
 
 const client = axios.create({
   baseURL: 'https://api.podcastindex.org/api/1.0',
+  httpsAgent,
+  timeout: 10000
 });
 
-// Add request interceptor to generate fresh auth headers for each request
+// Simplified request interceptor
 client.interceptors.request.use(config => {
-  const timestamp = Math.floor(Date.now() / 1000);
-  
-  // Create the auth hash according to documentation
-  // https://podcastindex-org.github.io/docs-api/#overview--authentication-details
-  const data = apiKey + apiSecret + timestamp;
-  const hash = crypto.createHash('sha1').update(data).digest('hex');
-  
-  // Set required headers
-  config.headers['X-Auth-Date'] = timestamp;
-  config.headers['X-Auth-Key'] = apiKey;
-  config.headers['Authorization'] = hash;
-  config.headers['User-Agent'] = 'PodcastHub/1.0';
-  
-  return config;
+  try {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const authString = apiKey + apiSecret + timestamp;
+    const hash = crypto.createHash('sha1').update(authString).digest('hex');
+    
+    config.headers = {
+      ...config.headers,
+      'User-Agent': 'PodcastHub/1.0',
+      'X-Auth-Date': timestamp,
+      'X-Auth-Key': apiKey,
+      'Authorization': hash
+    };
+    
+    return config;
+  } catch (error) {
+    console.error('❌ Error setting up request headers:', error.message);
+    return Promise.reject(error);
+  }
 });
 
-// Response interceptor for additional error logging
+// Simplified response interceptor - only log errors
 client.interceptors.response.use(
-  response => {
-    console.log("✅ Podcast Index API request successful");
-    return response;
-  },
+  response => response, // Don't log successful responses
   error => {
-    console.error("❌ Podcast Index API error:", 
-      error.response?.data?.description || error.message);
+    if (error.response?.status === 403) {
+      console.error("❌ Podcast Index API: Access forbidden (check credentials or network)");
+    } else if (error.code === 'ECONNREFUSED') {
+      console.error("❌ Podcast Index API: Connection refused (network/firewall issue)");
+    } else {
+      console.error("❌ Podcast Index API error:", error.message);
+    }
     return Promise.reject(error);
   }
 );
 
-module.exports = client;
+export default client;

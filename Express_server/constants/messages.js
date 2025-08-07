@@ -1,25 +1,21 @@
 const Messages = {
     SUCCESS: {
-      USER_REGISTERED: 'User created. Verification email sent.',
-      EMAIL_VERIFIED: 'Email verified successfully!',
-      RESEND_VERIFY_LINK : "New verification email sent",
-      Mobile_VERIFIED_DONE : "Mobile verified. Registration complete."
-      
+      USER_REGISTERED: "Registration successful! Check your email to verify your account.",
+      RESEND_VERIFY_LINK: "Verification link has been resent to your email.",
+      EMAIL_VERIFIED: "Email verified successfully!",
+      Mobile_VERIFIED_DONE: "Mobile verified successfully!"
     },
     ERROR: {
-      EMAIL_ALREADY_REGISTERED: 'Email already registered',
-      EMAIL_ALREADY_VERIFIED: 'Email already verified', // Add this
-      REVERIFIED_EMAIL : 'Verification email already sent. Please check your inbox or try again after 15 minutes.',
-      NOT_PENDING_VERFICATION : 'No pending verification found. Please register again.',
-      INVALID_OR_EXPIRED_TOKEN: 'Invalid or expired verification link. Please register again.',
-      SERVER_ERROR: 'Internal server error',
-      EMAIL_VERIFICATION_FAILED: 'Email verification failed. Please try again.',
-      INVALID_EMAIL_FORMAT : 'Invalid email format',
-      INVALID_OR_EXPIRED_OTP :"Invalid or expired OTP",
-      USER_NOT_FOUND:"User not found",
-      EMAIL_AND_OTP_ARE_REQUIRED :"Email and OTP are required" ,
-      FAILED_TO_SEND_OTP :"Failed to send OTP. Please try again.",
+      EMAIL_ALREADY_REGISTERED: "Email already registered.",
+      INVALID_EMAIL_FORMAT: "Invalid email format.",
+      INVALID_OR_EXPIRED_TOKEN: "Invalid or expired token.",
+      EMAIL_AND_OTP_ARE_REQUIRED: "Email and OTP are required.",
+      USER_NOT_FOUND: "User not found.",
+      INVALID_OR_EXPIRED_OTP: "Invalid or expired OTP.",
+      NOT_PENDING_VERFICATION: "No pending verification for this email.",
+      REVERIFIED_EMAIL: "Email already verified or verification link was recently sent.",
+      SERVER_ERROR: "Internal server error."
     }
   };
   
-  module.exports = Messages;
+  export default Messages;

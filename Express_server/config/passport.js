@@ -1,11 +1,11 @@
-const passport = require("passport");
-const bcrypt = require("bcrypt");
-const GoogleStrategy = require("passport-google-oauth20").Strategy;
-const { v4: uuidv4 } = require("uuid");
-const userRepo = require("../utils/userQueryData");
+import passport from "passport";
+import bcrypt from "bcrypt";
+import GoogleStrategy from "passport-google-oauth20";
+import { v4 as uuidv4 } from "uuid";
+import * as userRepo from "../utils/userQueryData.js";
 
 passport.use(
-  new GoogleStrategy(
+  new GoogleStrategy.Strategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -56,4 +56,4 @@ passport.use(
   )
 );
 
-module.exports = passport;
+export default passport;

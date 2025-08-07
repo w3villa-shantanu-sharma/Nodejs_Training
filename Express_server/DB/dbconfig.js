@@ -1,16 +1,35 @@
-// require('dotenv').config();
-const mysql = require('mysql2');
+import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
 
-const pool = mysql.createPool({
-    host : process.env.DB_HOST,
-    user : process.env.DB_USER,
-    password : process.env.DB_PASSWORD,
-    database : process.env.DB_NAME
+dotenv.config();
 
-});
+const dbConfig = {
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  // Enable secure connection via SSL
+  ssl: {
+    // For testing you can set rejectUnauthorized to false.
+    // For production, provide the proper CA certificate.
+    rejectUnauthorized: false
+  },
+  // Fix timezone issues
+  timezone: '+00:00',
+  dateStrings: ['DATE', 'DATETIME']
+};
 
-console.log(process.env.DB_USER);
+const pool = mysql.createPool(dbConfig);
 
+// Test connection
+pool.getConnection()
+  .then(connection => {
+    console.log('✅ Connected to MySQL database');
+    connection.release();
+  })
+  .catch(err => {
+    console.error('❌ Database connection failed:', err.message);
+  });
 
-module.exports = pool.promise();
+export default pool;
 

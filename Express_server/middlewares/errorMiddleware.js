@@ -1,5 +1,5 @@
-const Messages = require('../constants/messages');
-const StatusCodes = require('../constants/statusCode');
+import Messages from '../constants/messages.js';
+import StatusCodes from '../constants/statusCode.js';
 
 const errorMiddleware = (err, req, res, next) => {
   console.error(err.stack);
@@ -8,4 +8,4 @@ const errorMiddleware = (err, req, res, next) => {
   });
 };
 
-module.exports = errorMiddleware;
+export default errorMiddleware;

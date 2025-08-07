@@ -1,8 +1,5 @@
-const db = require('../DB/dbconfig');
-// require('dotenv').config()
-const nodemailer = require('nodemailer');
-// const { secret, expiresIn } = require('../config/jwt');
-// const jwt = require('jsonwebtoken');
+import db from '../DB/dbconfig.js';
+import nodemailer from 'nodemailer';
 
 const sendEmailVerification = async (email, token) => {
   console.log("Sending verification email to:", email);
@@ -25,7 +22,7 @@ const sendEmailVerification = async (email, token) => {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Welcome to Podcast Hub!</h2>
-        <p>Please click the button below to verify your email address:</p>
+        <p>Thank you for registering with us. Please click the button below to verify your email address:</p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${verificationUrl}" 
              style="background-color: #007bff; color: white; padding: 12px 24px; 
@@ -33,17 +30,16 @@ const sendEmailVerification = async (email, token) => {
             Verify Email Address
           </a>
         </div>
-        <p>Or copy and paste this link in your browser:</p>
-        <p style="word-break: break-all; color: #666;">${verificationUrl}</p>
-        <p><small>This link will expire in 15 minutes.</small></p>
+        <p>If the button doesn't work, copy and paste this link into your browser:</p>
+        <p><a href="${verificationUrl}">${verificationUrl}</a></p>
+        <p>This link will expire in 15 minutes for security reasons.</p>
+        <p>If you didn't create an account with us, please ignore this email.</p>
       </div>
     `
   });
-  
-  console.log("Verification URL:", verificationUrl);
 };
 
-module.exports = sendEmailVerification;
+export default sendEmailVerification;
 
 
 

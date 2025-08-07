@@ -1,17 +1,41 @@
-const express = require('express');
-const passport = require('passport');
-const jwt = require('jsonwebtoken');
-const { secret, expiresIn } = require('../config/jwt');
+import express from 'express';
+import passport from 'passport';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import { secret, expiresIn } from '../config/jwt.js';
+import * as userRepo from '../utils/userQueryData.js';
 
 const router = express.Router();
 
-// Initiate Google login
+// Helper function to create and store token (same as in newAuthController)
+const createAndStoreToken = async (userUuid, email, deviceInfo = null) => {
+  // Create token using the expiresIn from config (which is now 24h)
+  const token = jwt.sign(
+    { userUUID: userUuid, uuid: userUuid, email: email }, 
+    secret, 
+    { expiresIn }
+  );
+  
+  // Calculate expiration time based on the same duration as the JWT
+  // Convert the string "24h" to milliseconds
+  const expiresInMs = expiresIn.includes('h') 
+    ? parseInt(expiresIn) * 60 * 60 * 1000 
+    : 24 * 60 * 60 * 1000; // Default to 24 hours
+  
+  const expiresAt = new Date(Date.now() + expiresInMs);
+  
+  // Store token hash in database with matching expiration
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  await userRepo.storeToken(userUuid, tokenHash, 'ACCESS', expiresAt, deviceInfo);
+  
+  return token;
+};
+
+// Google OAuth routes
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-// Google callback
-router.get(
-  '/google/callback',
-  passport.authenticate('google', { session: false }),
+router.get('/google/callback', 
+  passport.authenticate('google', { session: false }), 
   handleGoogleCallback
 );
 
@@ -23,17 +47,28 @@ async function handleGoogleCallback(req, res) {
 
   try {
     const user = req.user;
-    const token = jwt.sign({ uuid: user.uuid }, secret, { expiresIn });
+    
+    // Use the same token creation system as regular login
+    const deviceInfo = req.headers['user-agent'] || 'Google OAuth';
+    const token = await createAndStoreToken(user.uuid, user.email, deviceInfo);
+
+    // Set the token as HTTP-only cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
+    });
 
     // Determine next action based on user completion status
     let redirectUrl;
 
     if (user.next_action) {
       // User needs to complete onboarding steps
-      redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/oauth-success?token=${token}&next_action=${user.next_action}&email=${encodeURIComponent(user.email)}`;
+      redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/oauth-success?next_action=${user.next_action}&email=${encodeURIComponent(user.email)}`;
     } else {
       // User profile is complete
-      redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/oauth-success?token=${token}&next_action=null`;
+      redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/oauth-success?next_action=null`;
     }
 
     res.redirect(redirectUrl);
@@ -43,27 +78,4 @@ async function handleGoogleCallback(req, res) {
   }
 }
 
-// // Initiate Facebook login
-// router.get('/facebook', passport.authenticate('facebook', { scope: ['email'] }));
-
-// // Facebook callback
-// router.get(
-//   '/facebook/callback',
-//   passport.authenticate('facebook', { session: false }),
-//   (req, res) => {
-//     const user = req.user;
-//     const token = jwt.sign(
-//       { uuid: user.uuid, email: user.email, method: 'FACEBOOK' },
-
-//       secret,
-//       { expiresIn }
-//     );
-
-//     // ✅ Redirect to frontend with token and user info
-//     const redirectUrl = `http://localhost:5173/oauth-success?token=${token}&name=${encodeURIComponent(
-//       user.name
-//     )}&email=${encodeURIComponent(user.email)}&uuid=${user.uuid}`;
-//     return res.redirect(redirectUrl);
-//   }
-// );
-module.exports = router;
+export default router;

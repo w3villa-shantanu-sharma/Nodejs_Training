@@ -1,13 +1,11 @@
-const PDFDocument = require('pdfkit');
-const getUserDetails = require('../utils/userQueryData').getUserByUUID;
-const s3 = require('../utils/storjClient');
-const crypto = require('crypto');
-const userRepo = require('../utils/userQueryData');
-const razorpay = require('../config/razorpay');
-// Add this line to import prices and durations
-const { prices, durations } = require('../utils/plans');
+import PDFDocument from 'pdfkit';
+import crypto from 'crypto';
+import s3 from '../utils/storjClient.js';
+import * as userRepo from '../utils/userQueryData.js'; // Changed to import all named exports
+import razorpay from '../config/razorpay.js';
+import { prices, durations } from '../utils/plans.js';
 
-exports.uploadProfilePicture = async (req, res) => {
+export const uploadProfilePicture = async (req, res) => {
   const userUUID = req.user?.uuid;
 
   if (!req.file || !userUUID) {
@@ -43,8 +41,7 @@ exports.uploadProfilePicture = async (req, res) => {
   }
 };
 
-// controller/userController.js
-exports.updateAddress = async (req, res) => {
+export const updateAddress = async (req, res) => {
   const userUUID = req.user?.uuid;
   const { address_line, city, state, country, lat, lng } = req.body;
 
@@ -69,12 +66,12 @@ exports.updateAddress = async (req, res) => {
   }
 };
 
-exports.downloadProfile = async (req, res) => {
+export const downloadProfile = async (req, res) => {
   const uuid = req.user?.uuid;
   if (!uuid) return res.status(401).json({ message: 'Unauthorized' });
 
   try {
-    const user = await getUserDetails(uuid);
+    const user = await userRepo.getUserByUUID(uuid); // Fixed function call
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const doc = new PDFDocument();
@@ -99,8 +96,7 @@ exports.downloadProfile = async (req, res) => {
   }
 };
 
-// Create Razorpay order
-exports.createOrder = async (req, res) => {
+export const createOrder = async (req, res) => {
   const { plan } = req.body;
   const user = req.user;
   
@@ -162,8 +158,7 @@ exports.createOrder = async (req, res) => {
   }
 };
 
-// Verify Razorpay payment
-exports.verifyPayment = async (req, res) => {
+export const verifyPayment = async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, plan } = req.body;
   const userUUID = req.user.uuid;
 
@@ -188,9 +183,7 @@ exports.verifyPayment = async (req, res) => {
   }
 };
 
-// routes/users.js or usersController.js
-
-exports.getCurrentUser = async (req, res) => {
+export const getCurrentUser = async (req, res) => {
   try {
     const user = await userRepo.getUserByUUID(req.user.uuid);
     if (!user) {
@@ -217,8 +210,7 @@ exports.getCurrentUser = async (req, res) => {
   }
 };
 
-// Add this function to proxy profile images
-exports.getProfileImage = async (req, res) => {
+export const getProfileImage = async (req, res) => {
   const { filename } = req.params;
   const key = `profile-pictures/${filename}`;
 
@@ -243,5 +235,87 @@ exports.getProfileImage = async (req, res) => {
     
     // Return a default avatar on error
     res.redirect('/default-avatar.png');
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  const userUUID = req.user?.uuid;
+  if (!userUUID) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  try {
+    const { name, email, username, bio, phone } = req.body;
+    
+    // Optional validation
+    if (username) {
+      // Check if username is taken by someone else
+      const existingUser = await userRepo.isUsernameTaken(username);
+      if (existingUser && username !== req.user.username) {
+        return res.status(400).json({ 
+          message: "Username already taken"
+        });
+      }
+    }
+
+    // Update user in database
+    await userRepo.updateUserProfile(userUUID, {
+      name,
+      email,
+      username,
+      bio,
+      phone
+    });
+
+    // Fetch updated user data
+    const updatedUser = await userRepo.getUserByUUID(userUUID);
+
+    // Return success with updated user data
+    return res.status(200).json({
+      message: "Profile updated successfully",
+      user: {
+        name: updatedUser.name,
+        email: updatedUser.email,
+        username: updatedUser.username,
+        bio: updatedUser.bio,
+        phone: updatedUser.phone,
+        profile_picture: updatedUser.profile_picture
+      }
+    });
+  } catch (err) {
+    console.error('Profile update error:', err);
+    return res.status(500).json({ message: 'Failed to update profile' });
+  }
+};
+
+export const getUserNotifications = async (req, res) => {
+  const userUuid = req.user?.uuid;
+  if (!userUuid) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  try {
+    const notifications = await userRepo.getUserNotifications(userUuid);
+    return res.status(200).json(notifications);
+  } catch (err) {
+    console.error('Error fetching notifications:', err);
+    return res.status(500).json({ message: 'Failed to fetch notifications' });
+  }
+};
+
+export const markNotificationSeen = async (req, res) => {
+  const userUuid = req.user?.uuid;
+  const { notificationId } = req.params;
+  
+  if (!userUuid) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  try {
+    await userRepo.markNotificationAsSeen(notificationId, userUuid);
+    return res.status(200).json({ message: 'Notification marked as seen' });
+  } catch (err) {
+    console.error('Error marking notification as seen:', err);
+    return res.status(500).json({ message: 'Failed to update notification' });
   }
 };

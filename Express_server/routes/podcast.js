@@ -1,16 +1,17 @@
-const express = require('express');
-const router = express.Router();
-const auth = require('../middlewares/authenciate');
-const controller = require('../controllers/podcastController');
+import express from 'express';
+import authenticate from '../middlewares/authenciate.js';
+import * as controller from '../controllers/podcastController.js';
 
-router.get('/mine', auth, controller.getMine);
-router.post('/create', auth, controller.createPage);
+const router = express.Router();
+
+router.get('/mine', authenticate, controller.getMine);
+router.post('/create', authenticate, controller.createPage);
 router.get('/free', controller.getPublicPodcastFree);
 router.get('/playlists', controller.getPlaylists);
 router.get('/search', controller.searchPodcasts); // Search route
-
+router.post('/track-listen/:podcastId', controller.trackListenClick);
 router.get('/public', controller.getPublicProfiles);
 router.get('/:username', controller.getPublic);
 router.post('/track/:username', controller.trackClick);
 
-module.exports = router;
+export default router;
