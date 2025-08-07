@@ -12,8 +12,9 @@ const sendEmailVerification = async (email, token) => {
     }
   });
 
-  // Point to frontend URL, not backend API
-  const verificationUrl = `http://localhost:5173/verify-email/${token}?email=${encodeURIComponent(email)}`;
+  // Update the verification URL to point to your Vercel app
+  const frontendURL = process.env.FRONTEND_URL || 'https://podacast-linker.vercel.app';
+  const verificationUrl = `${frontendURL}/verify-email/${token}?email=${encodeURIComponent(email)}`;
 
   await transporter.sendMail({
     from: process.env.EMAIL_USER || "shantanusharma9144@gmail.com",

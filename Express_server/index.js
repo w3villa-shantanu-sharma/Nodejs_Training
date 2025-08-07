@@ -15,13 +15,15 @@ dotenv.config({ path: './.env' });
 const app = express();
 const PORT = 4000;
 
-// Enable CORS for your frontend origin
+// Update your CORS configuration to allow your Vercel app
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (config.ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+    const allowedOrigins = config.ALLOWED_ORIGINS;
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
       return callback(null, true);
     }
     

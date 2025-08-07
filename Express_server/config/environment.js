@@ -5,12 +5,12 @@ const isProd = process.env.NODE_ENV === 'production';
 
 export const config = {
   // Core URLs
-  FRONTEND_URL: process.env.FRONTEND_URL || (isProd ? 'https://your-vercel-app.vercel.app' : 'http://localhost:5173'),
-  BACKEND_URL: process.env.BACKEND_URL || (isProd ? 'https://your-backend.onrender.com' : 'http://localhost:4000'),
+  FRONTEND_URL: process.env.FRONTEND_URL || 'https://podacast-linker.vercel.app',
+  BACKEND_URL: process.env.BACKEND_URL || 'https://nodejs-training-rk0a.onrender.com',
   
   // Auth config
-  JWT_SECRET: process.env.JWT_SECRET || 'pretty',
-  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '24h',
+  JWT_SECRET: process.env.JWT_SECRET ,
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN,
   
   // Cookie settings
   COOKIE_SECURE: isProd,
@@ -18,14 +18,20 @@ export const config = {
   
   // CORS domains
   ALLOWED_ORIGINS: [
-    isProd ? 'https://your-vercel-app.vercel.app' : 'http://localhost:5173',
-    'http://localhost:5174' // Development alternative port
+    'https://podacast-linker.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    // Add any additional domains if needed
   ],
+  
+  // Cookie settings
+  COOKIE_SECURE: process.env.NODE_ENV === 'production', // true in production
+  COOKIE_SAMESITE: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   
   // OAuth callbacks
   GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || 
-    (isProd ? 'https://your-backend.onrender.com/api/users/auth/google/callback' : 'http://localhost:4000/api/users/auth/google/callback'),
+    'https://nodejs-training-rk0a.onrender.com/api/users/auth/google/callback',
   
   // Port configuration
-  PORT: process.env.PORT || 4000
+//   PORT: process.env.PORT || 4000
 };
