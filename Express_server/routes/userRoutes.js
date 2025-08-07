@@ -130,77 +130,49 @@ router.post('/refresh-token', async (req, res) => {
       });
     }
     
-    // First validate the token hash in the database
+    // Validate and generate new token
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const dbToken = await userRepo.getTokenByHash(tokenHash);
     
-    if (!dbToken) {
+    if (!dbToken || dbToken.is_revoked) {
       return res.status(401).json({ 
-        message: "Token not found",
+        message: "Invalid token",
         code: "INVALID_TOKEN"
       });
     }
     
-    if (dbToken.is_revoked) {
-      return res.status(401).json({ 
-        message: "Token has been revoked", 
-        code: "TOKEN_REVOKED"
-      });
-    }
+    // Check if token is about to expire (within 1 hour)
+    const expiresAt = new Date(dbToken.expires_at);
+    const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
     
-    // Then try to decode the JWT (even if expired)
-    let decoded;
-    try {
-      decoded = jwt.verify(token, secret);
-    } catch (verifyErr) {
-      if (verifyErr.name !== 'TokenExpiredError') {
-        // If it's not an expiration error, it's an invalid token
-        return res.status(401).json({ 
-          message: "Invalid token signature", 
-          code: "INVALID_TOKEN"
-        });
-      }
-      
-      // If it's expired, decode it without verification to get the payload
-      decoded = jwt.decode(token);
+    if (expiresAt > oneHourFromNow) {
+      // Token still valid for more than an hour
+      return res.status(200).json({ message: "Token still valid" });
     }
-    
-    if (!decoded || !decoded.uuid) {
-      return res.status(401).json({ 
-        message: "Invalid token format", 
-        code: "INVALID_TOKEN"
-      });
-    }
-    
-    // Revoke old token
-    await userRepo.revokeToken(tokenHash);
     
     // Generate new token
-    const deviceInfo = req.headers['user-agent'] || 'Token Refresh';
+    const decoded = jwt.decode(token);
     const newToken = await createAndStoreToken(
-      decoded.uuid || decoded.userUUID, 
-      decoded.email, 
-      deviceInfo
+      decoded.uuid || decoded.userUUID,
+      decoded.email,
+      req.headers['user-agent'] || 'Token Refresh'
     );
     
-    // Set new token as cookie
+    // Set new token as cookie with environment-aware settings
     res.cookie("token", newToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours in milliseconds
+      secure: config.COOKIE_SECURE,
+      sameSite: config.COOKIE_SAMESITE,
+      maxAge: 24 * 60 * 60 * 1000
     });
     
     return res.status(200).json({ 
       message: "Token refreshed successfully",
-      token: newToken // Only for clients that manage tokens themselves
+      token: newToken
     });
-  } catch (err) {
-    console.error('Token refresh error:', err);
-    return res.status(401).json({ 
-      message: "Failed to refresh token", 
-      code: "REFRESH_FAILED"
-    });
+  } catch (error) {
+    console.error("Token refresh error:", error);
+    return res.status(401).json({ message: "Token refresh failed" });
   }
 });
 

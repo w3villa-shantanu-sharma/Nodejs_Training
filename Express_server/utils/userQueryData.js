@@ -647,3 +647,194 @@ export const getUserPlan = async (userUuid) => {
   );
   return rows[0]?.plan || 'FREE';
 };
+
+export const updateUserActive = async (uuid, isActive) => {
+  return db.query(
+    'UPDATE users SET is_active = ? WHERE uuid = ?',
+    [isActive ? 1 : 0, uuid]
+  );
+};
+
+// Add this function to userQueryData.js
+export const updateUserAsAdmin = async (uuid) => {
+  return db.query(
+    'UPDATE users SET is_active = 1, next_action = NULL WHERE uuid = ?',
+    [uuid]
+  );
+};
+
+// Add this function near the other cleanup functions
+export const cleanupOldRateLimits = async () => {
+  try {
+    await db.query(
+      'DELETE FROM rate_limits WHERE window_start < DATE_SUB(NOW(), INTERVAL 1 DAY)'
+    );
+    console.log('✅ Cleaned up old rate limit records');
+    return true;
+  } catch (err) {
+    console.error('Error cleaning up rate limits:', err);
+    return false;
+  }
+};
+
+// Add these admin functions near the end of your file
+
+// Count users with optional filters
+export const countUsers = async (filters = {}) => {
+  try {
+    let query = 'SELECT COUNT(*) as total FROM users WHERE 1=1';
+    const values = [];
+    
+    if (filters.status) {
+      query += ' AND is_active = ?';
+      values.push(filters.status === 'active' ? 1 : 0);
+    }
+    
+    if (filters.plan && Array.isArray(filters.plan)) {
+      query += ' AND plan IN (?)';
+      values.push(filters.plan);
+    } else if (filters.plan) {
+      query += ' AND plan = ?';
+      values.push(filters.plan);
+    }
+    
+    const [rows] = await db.query(query, values);
+    return rows[0].total;
+  } catch (error) {
+    console.error('Error counting users:', error);
+    return 0;
+  }
+};
+
+// Count recent users
+export const countRecentUsers = async (days = 30) => {
+  try {
+    const query = `
+      SELECT COUNT(*) as total 
+      FROM users 
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+    `;
+    
+    const [rows] = await db.query(query, [days]);
+    return rows[0].total;
+  } catch (error) {
+    console.error('Error counting recent users:', error);
+    return 0;
+  }
+};
+
+// Get filtered users with pagination and search
+export const getFilteredUsers = async ({ search = '', role, status, limit = 10, offset = 0 }) => {
+  try {
+    let query = `
+      SELECT uuid, name, email, username, role, is_active, plan, plan_expires_at, 
+             created_at, updated_at, login_method, next_action, profile_picture
+      FROM users
+      WHERE 1=1
+    `;
+    
+    const values = [];
+    
+    // Add search condition
+    if (search) {
+      query += ` AND (name LIKE ? OR email LIKE ? OR username LIKE ?)`;
+      const searchTerm = `%${search}%`;
+      values.push(searchTerm, searchTerm, searchTerm);
+    }
+    
+    // Add role filter
+    if (role) {
+      query += ` AND role = ?`;
+      values.push(role);
+    }
+    
+    // Add status filter
+    if (status) {
+      query += ` AND is_active = ?`;
+      values.push(status === 'active' ? 1 : 0);
+    }
+    
+    // Add count query for total
+    const countQuery = query.replace(
+      'SELECT uuid, name, email, username, role, is_active, plan, plan_expires_at, created_at, updated_at, login_method, next_action, profile_picture', 
+      'SELECT COUNT(*) as total'
+    );
+    
+    // Add pagination
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    values.push(limit, offset);
+    
+    // Execute both queries
+    const [rows] = await db.query(query, values);
+    const [countResult] = await db.query(countQuery, values.slice(0, -2)); // Remove limit and offset
+    
+    return {
+      users: rows,
+      total: countResult[0].total
+    };
+  } catch (error) {
+    console.error('Error filtering users:', error);
+    return { users: [], total: 0 };
+  }
+};
+
+// Update user as admin (can update any field)
+export const updateUserAdmin = async (uuid, updates) => {
+  try {
+    // Ensure we're not updating sensitive fields directly
+    const allowedFields = [
+      'name', 'email', 'username', 'role', 'is_active', 'plan', 
+      'plan_expires_at', 'next_action'
+    ];
+    
+    const filteredUpdates = {};
+    Object.keys(updates).forEach(key => {
+      if (allowedFields.includes(key)) {
+        filteredUpdates[key] = updates[key];
+      }
+    });
+    
+    if (Object.keys(filteredUpdates).length === 0) {
+      return { affectedRows: 0 };
+    }
+    
+    // Build query
+    let query = 'UPDATE users SET ';
+    const values = [];
+    
+    Object.entries(filteredUpdates).forEach(([key, value], index) => {
+      if (index > 0) query += ', ';
+      query += `${key} = ?`;
+      values.push(value);
+    });
+    
+    query += `, updated_at = NOW() WHERE uuid = ?`;
+    values.push(uuid);
+    
+    const [result] = await db.query(query, values);
+    return result;
+  } catch (error) {
+    console.error('Error updating user as admin:', error);
+    throw error;
+  }
+};
+
+// Delete user
+export const deleteUser = async (uuid) => {
+  try {
+    // First delete related records in other tables
+    await db.query('DELETE FROM user_tokens WHERE user_uuid = ?', [uuid]);
+    
+    // These might fail if the tables don't exist or the constraints are set differently
+    try { await db.query('DELETE FROM podcast_pages WHERE user_uuid = ?', [uuid]); } catch (e) {}
+    try { await db.query('DELETE FROM notifications WHERE user_uuid = ?', [uuid]); } catch (e) {}
+    try { await db.query('DELETE FROM youtube_links WHERE user_uuid = ?', [uuid]); } catch (e) {}
+    
+    // Then delete the user
+    const [result] = await db.query('DELETE FROM users WHERE uuid = ?', [uuid]);
+    return result;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    throw error;
+  }
+};

@@ -10,6 +10,7 @@ import Messages from "../constants/messages.js";
 import StatusCodes from "../constants/statusCode.js";
 import { secret, expiresIn } from "../config/jwt.js";
 import redisClient from "../utils/redisClient.js";
+import { config } from '../config/environment.js';
 
 // Register User (Starts Email Verification)
 export const registerUser = async (req, res) => {
@@ -186,9 +187,10 @@ export const verifyEmail = async (req, res) => {
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password)
+  if (!email || !password) {
     return res.status(StatusCodes.BAD_REQUEST)
       .json({ message: "Email and password are required" });
+  }
 
   try {
     const user = (await userRepo.getUserByEmail(email))?.[0];
@@ -210,7 +212,34 @@ export const loginUser = async (req, res) => {
         .json({ message: "Invalid credentials" });
     }
 
-    // Check user completion status
+    // CRITICAL FIX: Check if user is admin - bypass completion checks for admins
+    if (user.role === 'admin') {
+      // Force admin users to be active and bypass onboarding
+      await userRepo.updateUserAsAdmin(user.uuid);
+      
+      // Create token for admin
+      const deviceInfo = req.headers['user-agent'] || 'Admin Login';
+      const token = await createAndStoreToken(user.uuid, user.email, deviceInfo);
+      
+      // Set token in cookie AND return it in response
+      return res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: config.COOKIE_SECURE, // true in production
+          sameSite: config.COOKIE_SAMESITE, // 'none' in production
+          maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        })
+        .status(200)
+        .json({
+          status: "SUCCESS",
+          token: token, // IMPORTANT: Include token in response
+          isAdmin: true,
+          message: "Admin login successful",
+          next_action: null,
+        });
+    }
+    
+    // Check user completion status for non-admin users
     if (!user.is_active || user.next_action !== null) {
       switch (user.next_action) {
         case "EMAIL_VERIFICATION":
@@ -248,8 +277,8 @@ export const loginUser = async (req, res) => {
     return res
       .cookie("token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax", 
+        secure: config.COOKIE_SECURE, // true in production
+        sameSite: config.COOKIE_SAMESITE, // 'none' in production
         maxAge: 24 * 60 * 60 * 1000, // 24 hours (matching JWT)
       })
       .status(200)
@@ -345,7 +374,7 @@ const createAndStoreToken = async (userUuid, email, deviceInfo = null) => {
   const token = jwt.sign(
     { userUUID: userUuid, uuid: userUuid, email: email }, 
     secret, 
-    { expiresIn }
+    { expiresIn: '24h' }
   );
   
   // Calculate expiration time based on the same duration as the JWT
@@ -414,8 +443,8 @@ export const verifyMobileOtp = async (req, res) => {
     // Set token as HTTP-only cookie
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: config.COOKIE_SECURE, // true in production
+      sameSite: config.COOKIE_SAMESITE, // 'none' in production
       maxAge: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
     });
 

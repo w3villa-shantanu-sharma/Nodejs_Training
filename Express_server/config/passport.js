@@ -3,13 +3,14 @@ import bcrypt from "bcrypt";
 import GoogleStrategy from "passport-google-oauth20";
 import { v4 as uuidv4 } from "uuid";
 import * as userRepo from "../utils/userQueryData.js";
+import { config } from '../config/environment.js';
 
 passport.use(
   new GoogleStrategy.Strategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "http://localhost:4000/api/users/auth/google/callback",
+      callbackURL: config.GOOGLE_CALLBACK_URL,
     },
     async (accessToken, refreshToken, profile, done) => {
       try {

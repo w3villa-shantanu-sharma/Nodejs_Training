@@ -17,11 +17,11 @@ redisClient.on('error', (err) => {
 });
 
 redisClient.on('connect', () => {
-  console.log('✅ Connected to Redis Cloud');
+  console.log('Connected to Redis Cloud');
 });
 
 redisClient.on('disconnect', () => {
-  console.log('❌ Disconnected from Redis Cloud');
+  console.log('Disconnected from Redis Cloud');
 });
 
 // Connect immediately

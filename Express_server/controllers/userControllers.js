@@ -190,20 +190,16 @@ export const getCurrentUser = async (req, res) => {
       return res.status(401).json({ message: "User not found" });
     }
 
-    console.log("User data from DB:", user); // Debug log to see user data
-
-    // Optionally, remove sensitive fields before sending
+    // Omit sensitive information
     const { password, ...userData } = user;
     
-    // Make sure profile_picture is properly formatted
-    if (userData.profile_picture) {
-      // If using S3/Storj, ensure the URL is absolute
-      if (!userData.profile_picture.startsWith('http')) {
-        userData.profile_picture = `${process.env.STORAGE_URL}/${userData.profile_picture}`;
-      }
-    }
-
-    res.json(userData);
+    // Include role explicitly for admin panel access
+    const response = {
+      ...userData,
+      role: userData.role || 'user', // Ensure role is always returned
+    };
+    
+    res.json(response);
   } catch (err) {
     console.error("Error in getCurrentUser:", err);
     res.status(500).json({ message: "Server error" });

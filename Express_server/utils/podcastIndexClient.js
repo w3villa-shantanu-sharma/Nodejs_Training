@@ -10,7 +10,7 @@ const apiSecret = process.env.PODCAST_INDEX_SECRET;
 
 // Only log once on startup
 if (!apiKey || !apiSecret) {
-  console.error('❌ Missing Podcast Index API credentials in .env file');
+  console.error('Missing Podcast Index API credentials in .env file');
 }
 
 const httpsAgent = new https.Agent({
@@ -40,7 +40,7 @@ client.interceptors.request.use(config => {
     
     return config;
   } catch (error) {
-    console.error('❌ Error setting up request headers:', error.message);
+    console.error('Error setting up request headers:', error.message);
     return Promise.reject(error);
   }
 });
@@ -50,11 +50,11 @@ client.interceptors.response.use(
   response => response, // Don't log successful responses
   error => {
     if (error.response?.status === 403) {
-      console.error("❌ Podcast Index API: Access forbidden (check credentials or network)");
+      console.error("Podcast Index API: Access forbidden (check credentials or network)");
     } else if (error.code === 'ECONNREFUSED') {
-      console.error("❌ Podcast Index API: Connection refused (network/firewall issue)");
+      console.error("Podcast Index API: Connection refused (network/firewall issue)");
     } else {
-      console.error("❌ Podcast Index API error:", error.message);
+      console.error("Podcast Index API error:", error.message);
     }
     return Promise.reject(error);
   }

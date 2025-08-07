@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { secret, expiresIn } from '../config/jwt.js';
 import * as userRepo from '../utils/userQueryData.js';
+import { config } from '../config/environment.js';
 
 const router = express.Router();
 
@@ -65,10 +66,10 @@ async function handleGoogleCallback(req, res) {
 
     if (user.next_action) {
       // User needs to complete onboarding steps
-      redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/oauth-success?next_action=${user.next_action}&email=${encodeURIComponent(user.email)}`;
+      redirectUrl = `${config.FRONTEND_URL}/oauth-success?next_action=${user.next_action}&email=${encodeURIComponent(user.email)}`;
     } else {
       // User profile is complete
-      redirectUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/oauth-success?next_action=null`;
+      redirectUrl = `${config.FRONTEND_URL}/oauth-success?next_action=null`;
     }
 
     res.redirect(redirectUrl);
