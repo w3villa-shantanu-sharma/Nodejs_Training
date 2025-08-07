@@ -1,0 +1,37 @@
+[
+  {
+    "id": "sample1",
+    "title": "This American Life",
+    "description": "This American Life is a weekly public radio program and podcast. Each week we choose a theme and put together different kinds of stories on that theme.",
+    "thumbnail": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/69/8c/13/698c1356-9fd7-f8a5-3a9b-293ebbec6a89/mza_10899977664966526397.jpg/600x600bb.jpg",
+    "listenNotes": "https://www.thisamericanlife.org/"
+  },
+  {
+    "id": "sample2",
+    "title": "The Daily",
+    "description": "This is what the news should sound like. The biggest stories of our time, told by the best journalists in the world.",
+    "thumbnail": "https://is3-ssl.mzstatic.com/image/thumb/Podcasts115/v4/1c/ac/04/1cac0421-4483-ff09-4f80-19c77ce158a3/mza_6783180463837475268.jpg/600x600bb.jpg",
+    "listenNotes": "https://www.nytimes.com/column/the-daily"
+  },
+  {
+    "id": "sample3", 
+    "title": "Radiolab",
+    "description": "Radiolab is a show about curiosity. Where sound illuminates ideas, and the boundaries blur between science, philosophy, and human experience.",
+    "thumbnail": "https://is2-ssl.mzstatic.com/image/thumb/Podcasts125/v4/5e/e6/ed/5ee6ed92-9bc8-4274-5f45-08e5c5b6ebec/mza_1780796219123219531.jpg/600x600bb.jpg",
+    "listenNotes": "https://radiolab.org/"
+  },
+  {
+    "id": "sample4",
+    "title": "Serial",
+    "description": "Serial is a podcast from the creators of This American Life, hosted by Sarah Koenig. Serial tells one story — a true story — over the course of a season.",
+    "thumbnail": "https://is3-ssl.mzstatic.com/image/thumb/Podcasts125/v4/60/29/59/602959cb-3a36-8f67-7e85-17d9a1f0795f/mza_5970640329152918248.jpg/600x600bb.jpg",
+    "listenNotes": "https://serialpodcast.org/"
+  },
+  {
+    "id": "sample5",
+    "title": "TED Radio Hour",
+    "description": "Exploring the biggest questions of our time with the help of the world's greatest thinkers. Host Manoush Zomorodi inspires us to learn more about the world, our communities, and most importantly, ourselves.",
+    "thumbnail": "https://is5-ssl.mzstatic.com/image/thumb/Podcasts115/v4/31/4f/10/314f10b6-03a5-83eb-e1a7-c444aefd448e/mza_12517638876374195288.jpg/600x600bb.jpg",
+    "listenNotes": "https://www.npr.org/programs/ted-radio-hour/"
+  }
+]

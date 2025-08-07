@@ -2,19 +2,36 @@
   "name": "express_server",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon index.js",
+    "dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 nodemon index.js",
+    "type": "module"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "aws-sdk": "^2.1692.0",
+    "axios": "^1.11.0",
     "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.1",
     "mysql2": "^3.14.1",
+    "node-cron": "^4.2.0",
     "nodemailer": "^7.0.3",
+    "passport": "^0.7.0",
+    "passport-facebook": "^3.0.0",
+    "passport-google-oauth20": "^2.0.0",
+    "pdfkit": "^0.17.1",
+    "podcast-api": "^2.0.4",
+    "razorpay": "^2.9.6",
+    "redis": "^5.7.0",
+    "stripe": "^18.3.0",
     "twilio": "^5.6.1",
     "uuid": "^11.1.0"
   }
