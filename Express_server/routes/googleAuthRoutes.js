@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { secret, expiresIn } from '../config/jwt.js';
 import * as userRepo from '../utils/userQueryData.js';
-import { config } from '../config/environment.js';
+import { config, cookieOptions } from '../config/environment.js'; // Import cookieOptions
 
 const router = express.Router();
 
@@ -48,13 +48,8 @@ async function handleGoogleCallback(req, res) {
     const deviceInfo = req.headers['user-agent'] || 'Google OAuth';
     const token = await createAndStoreToken(user.uuid, user.email, deviceInfo);
 
-    // Set the token as HTTP-only cookie
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: config.COOKIE_SECURE,
-      sameSite: config.COOKIE_SAMESITE,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
-    });
+    // Set the token as HTTP-only cookie using centralized options
+    res.cookie("token", token, cookieOptions);
 
     // Determine next action based on user completion status
     let redirectUrl;

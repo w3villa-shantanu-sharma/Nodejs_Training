@@ -10,7 +10,7 @@ import Messages from "../constants/messages.js";
 import StatusCodes from "../constants/statusCode.js";
 import { secret, expiresIn } from "../config/jwt.js";
 import redisClient from "../utils/redisClient.js";
-import { config } from '../config/environment.js';
+import { config, cookieOptions } from '../config/environment.js'; // Import cookieOptions
 
 // Register User (Starts Email Verification)
 export const registerUser = async (req, res) => {
@@ -223,12 +223,7 @@ export const loginUser = async (req, res) => {
       
       // Set token in cookie AND return it in response
       return res
-        .cookie("token", token, {
-          httpOnly: true,
-          secure: config.COOKIE_SECURE, // true in production
-          sameSite: config.COOKIE_SAMESITE, // 'none' in production
-          maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        })
+        .cookie("token", token, cookieOptions)
         .status(200)
         .json({
           status: "SUCCESS",
@@ -275,12 +270,7 @@ export const loginUser = async (req, res) => {
     const token = await createAndStoreToken(user.uuid, user.email, deviceInfo);
     
     return res
-      .cookie("token", token, {
-        httpOnly: true,
-        secure: config.COOKIE_SECURE, // true in production
-        sameSite: config.COOKIE_SAMESITE, // 'none' in production
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours (matching JWT)
-      })
+      .cookie("token", token, cookieOptions)
       .status(200)
       .json({
         status: "SUCCESS",

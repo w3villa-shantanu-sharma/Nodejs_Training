@@ -25,7 +25,7 @@ export const config = {
   ],
   
   // Cookie settings
-  COOKIE_SECURE: process.env.NODE_ENV === 'production', // true in production
+  COOKIE_SECURE: process.env.NODE_ENV === 'production',
   COOKIE_SAMESITE: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   
   // OAuth callbacks
@@ -34,4 +34,12 @@ export const config = {
   
   // Port configuration
 //   PORT: process.env.PORT || 4000
+};
+
+// Add these centralized cookie options
+export const cookieOptions = {
+  httpOnly: true,
+  secure: config.COOKIE_SECURE,
+  sameSite: config.COOKIE_SAMESITE,
+  maxAge: 24 * 60 * 60 * 1000, // 24 hours
 };
