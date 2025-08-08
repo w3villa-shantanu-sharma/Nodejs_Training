@@ -15,7 +15,7 @@ export default async function sendEmail({ to, subject, html }) {
     throw new Error('Valid email address is required');
   }
   
-  const transporter = nodemailer.createTransporter({
+  const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: process.env.EMAIL_USER,
