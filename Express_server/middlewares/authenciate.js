@@ -16,7 +16,10 @@ export default async (req, res, next) => {
       });
     }
     
-    // Verify the token is valid in database
+    // First verify JWT signature
+    const decoded = jwt.verify(token, secret);
+    
+    // Then verify the token is valid in database
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const dbToken = await userRepo.getTokenByHash(tokenHash);
     
@@ -27,14 +30,14 @@ export default async (req, res, next) => {
       });
     }
     
-    // Verify JWT signature
-    const decoded = jwt.verify(token, secret);
-    
     // Get full user data to include role
     const user = await userRepo.getUserByUUID(decoded.uuid || decoded.userUUID);
     
     if (!user) {
-      return res.status(401).json({ message: "User not found" });
+      return res.status(401).json({ 
+        message: "User not found",
+        code: "USER_NOT_FOUND"
+      });
     }
     
     // Add user to request object with role information

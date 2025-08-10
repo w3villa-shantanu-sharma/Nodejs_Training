@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { secret, expiresIn } from '../config/jwt.js';
 import * as userRepo from '../utils/userQueryData.js';
-import { config, cookieOptions } from '../config/environment.js';
+import { config } from '../config/environment.js';
 
 const router = express.Router();
 
@@ -44,28 +44,30 @@ async function handleGoogleCallback(req, res) {
   try {
     const user = req.user;
     
+    // Ensure user is properly activated for Google OAuth
+    if (user.login_method === 'GOOGLE') {
+      await userRepo.updateUserAsAdmin(user.uuid); // This activates the user
+    }
+    
     // Create token
     const deviceInfo = req.headers['user-agent'] || 'Google OAuth';
     const token = await createAndStoreToken(user.uuid, user.email, deviceInfo);
 
-    // Set the token as HTTP-only cookie with production settings
+    // Try to set cookie but don't rely on it for cross-domain
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true, // Always true for cross-domain
-      sameSite: 'none', // Always 'none' for cross-domain
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      path: '/', // Ensure cookies are sent for all paths
-      domain: undefined // Let browser handle domain
+      secure: true,
+      sameSite: 'none',
+      maxAge: 24 * 60 * 60 * 1000,
+      path: '/',
     });
 
-    // CRITICAL FIX: Include token in the redirect URL as a query parameter
+    // CRITICAL: Always pass token in URL for cross-domain compatibility
     let redirectUrl;
     
-    if (user.next_action) {
-      // User needs to complete onboarding steps
+    if (user.next_action && user.next_action !== null) {
       redirectUrl = `${config.FRONTEND_URL}/oauth-success?next_action=${user.next_action}&email=${encodeURIComponent(user.email)}&token=${token}`;
     } else {
-      // User profile is complete
       redirectUrl = `${config.FRONTEND_URL}/oauth-success?next_action=null&token=${token}`;
     }
 
