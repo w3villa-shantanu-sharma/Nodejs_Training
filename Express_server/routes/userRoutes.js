@@ -121,16 +121,20 @@ router.post('/set-auth-cookie', (req, res) => {
 // Add refresh token route
 router.post('/refresh-token', async (req, res) => {
   try {
+    // Check for token in cookies or Authorization header
     const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
     
+    // If no token provided, try to create a new one based on an existing session
     if (!token) {
+      // For existing sessions without a token, we may return an error or try
+      // session-based authentication depending on your implementation
       return res.status(401).json({ 
         message: "No token provided",
         code: "NO_TOKEN"
       });
     }
     
-    // Validate and generate new token
+    // Validate token in database
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const dbToken = await userRepo.getTokenByHash(tokenHash);
     
@@ -139,15 +143,6 @@ router.post('/refresh-token', async (req, res) => {
         message: "Invalid token",
         code: "INVALID_TOKEN"
       });
-    }
-    
-    // Check if token is about to expire (within 1 hour)
-    const expiresAt = new Date(dbToken.expires_at);
-    const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
-    
-    if (expiresAt > oneHourFromNow) {
-      // Token still valid for more than an hour
-      return res.status(200).json({ message: "Token still valid" });
     }
     
     // Generate new token
@@ -159,16 +154,11 @@ router.post('/refresh-token', async (req, res) => {
     );
     
     // Set new token as cookie with environment-aware settings
-    res.cookie("token", newToken, {
-      httpOnly: true,
-      secure: config.COOKIE_SECURE,
-      sameSite: config.COOKIE_SAMESITE,
-      maxAge: 24 * 60 * 60 * 1000
-    });
+    res.cookie("token", newToken, cookieOptions);
     
     return res.status(200).json({ 
       message: "Token refreshed successfully",
-      token: newToken
+      token: newToken  // Important: return the token in the response body too
     });
   } catch (error) {
     console.error("Token refresh error:", error);

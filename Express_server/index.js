@@ -15,27 +15,21 @@ dotenv.config({ path: './.env' });
 const app = express();
 const PORT = 4000;
 
-// Update your CORS configuration to allow your Vercel app
+// Update your CORS configuration
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = config.ALLOWED_ORIGINS;
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      return callback(null, true);
-    }
-    
-    console.warn(`Origin ${origin} not allowed by CORS`);
-    callback(null, true); // For safety during transition, allow all
-  },
-  credentials: true,
+  origin: config.ALLOWED_ORIGINS,
+  credentials: true, // Critical for cookies
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Authorization'] // Allow frontend to read Authorization header
 }));
 
-app.options('*', cors()); // Handle preflight OPTIONS requests
+// Pre-flight requests
+app.options('*', cors({
+  origin: config.ALLOWED_ORIGINS,
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
 
 app.use(express.json());
 app.use(cookieParser());
