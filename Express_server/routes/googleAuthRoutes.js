@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { secret, expiresIn } from '../config/jwt.js';
 import * as userRepo from '../utils/userQueryData.js';
-import { config, cookieOptions } from '../config/environment.js'; // Import cookieOptions
+import { config, cookieOptions } from '../config/environment.js';
 
 const router = express.Router();
 
@@ -35,7 +35,7 @@ router.get('/google/callback',
   handleGoogleCallback
 );
 
-// Handler function for Google OAuth callback
+// FIXED: Handler function for Google OAuth callback
 async function handleGoogleCallback(req, res) {
   if (!req.user) {
     return res.redirect(`${config.FRONTEND_URL}/login?error=oauth_failed`);
@@ -44,22 +44,29 @@ async function handleGoogleCallback(req, res) {
   try {
     const user = req.user;
     
-    // Use the same token creation system as regular login
+    // Create token
     const deviceInfo = req.headers['user-agent'] || 'Google OAuth';
     const token = await createAndStoreToken(user.uuid, user.email, deviceInfo);
 
-    // Set the token as HTTP-only cookie using centralized options
-    res.cookie("token", token, cookieOptions);
+    // Set the token as HTTP-only cookie with production settings
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true, // Always true for cross-domain
+      sameSite: 'none', // Always 'none' for cross-domain
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      path: '/', // Ensure cookies are sent for all paths
+      domain: undefined // Let browser handle domain
+    });
 
-    // Determine next action based on user completion status
+    // CRITICAL FIX: Include token in the redirect URL as a query parameter
     let redirectUrl;
     
     if (user.next_action) {
       // User needs to complete onboarding steps
-      redirectUrl = `${config.FRONTEND_URL}/oauth-success?next_action=${user.next_action}&email=${encodeURIComponent(user.email)}`;
+      redirectUrl = `${config.FRONTEND_URL}/oauth-success?next_action=${user.next_action}&email=${encodeURIComponent(user.email)}&token=${token}`;
     } else {
       // User profile is complete
-      redirectUrl = `${config.FRONTEND_URL}/oauth-success?next_action=null`;
+      redirectUrl = `${config.FRONTEND_URL}/oauth-success?next_action=null&token=${token}`;
     }
 
     console.log('Redirecting to:', redirectUrl);

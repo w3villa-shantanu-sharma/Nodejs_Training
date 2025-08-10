@@ -274,6 +274,7 @@ export const loginUser = async (req, res) => {
       .status(200)
       .json({
         status: "SUCCESS",
+        token: token, // IMPORTANT: Include token in response
         message: "Login successful",
         next_action: null,
       });
