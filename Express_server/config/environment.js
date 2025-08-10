@@ -12,20 +12,20 @@ export const config = {
     'http://localhost:5173',
   ],
   
-  // Cookie settings
-  COOKIE_SECURE: process.env.NODE_ENV === 'production',
-  COOKIE_SAMESITE: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  // Cookie settings - always use secure settings for production
+  COOKIE_SECURE: true,
+  COOKIE_SAMESITE: 'none',
   
   // OAuth callbacks
   GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || 
     'https://nodejs-training-rk0a.onrender.com/api/users/auth/google/callback',
 };
 
-// Cookie options
+// Cookie options for cross-domain compatibility
 export const cookieOptions = {
   httpOnly: true,
-  secure: config.COOKIE_SECURE,
-  sameSite: config.COOKIE_SAMESITE,
+  secure: true,
+  sameSite: 'none',
   maxAge: 24 * 60 * 60 * 1000,
   path: '/',
 };

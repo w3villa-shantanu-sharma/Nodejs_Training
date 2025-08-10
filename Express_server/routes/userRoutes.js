@@ -124,17 +124,14 @@ router.post('/refresh-token', async (req, res) => {
     // Check for token in cookies or Authorization header
     const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
     
-    // If no token provided, try to create a new one based on an existing session
     if (!token) {
-      // For existing sessions without a token, we may return an error or try
-      // session-based authentication depending on your implementation
       return res.status(401).json({ 
         message: "No token provided",
         code: "NO_TOKEN"
       });
     }
     
-    // Validate token in database
+    // Validate token in database first
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const dbToken = await userRepo.getTokenByHash(tokenHash);
     
@@ -145,24 +142,35 @@ router.post('/refresh-token', async (req, res) => {
       });
     }
     
+    // Verify JWT
+    const decoded = jwt.verify(token, secret);
+    
     // Generate new token
-    const decoded = jwt.decode(token);
     const newToken = await createAndStoreToken(
       decoded.uuid || decoded.userUUID,
       decoded.email,
       req.headers['user-agent'] || 'Token Refresh'
     );
     
-    // Set new token as cookie with environment-aware settings
-    res.cookie("token", newToken, cookieOptions);
+    // Set new token as cookie
+    res.cookie("token", newToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: 24 * 60 * 60 * 1000,
+      path: '/',
+    });
     
     return res.status(200).json({ 
       message: "Token refreshed successfully",
-      token: newToken  // Important: return the token in the response body too
+      token: newToken  // Important: return the token in the response body
     });
   } catch (error) {
     console.error("Token refresh error:", error);
-    return res.status(401).json({ message: "Token refresh failed" });
+    return res.status(401).json({ 
+      message: "Token refresh failed",
+      code: "REFRESH_FAILED"
+    });
   }
 });
 

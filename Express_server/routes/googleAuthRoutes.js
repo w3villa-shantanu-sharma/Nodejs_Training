@@ -53,16 +53,16 @@ async function handleGoogleCallback(req, res) {
     const deviceInfo = req.headers['user-agent'] || 'Google OAuth';
     const token = await createAndStoreToken(user.uuid, user.email, deviceInfo);
 
-    // Try to set cookie but don't rely on it for cross-domain
+    // Set cross-domain cookie
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: true, // Always true for production cross-domain
+      sameSite: 'none', // Always 'none' for cross-domain
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
     });
 
-    // CRITICAL: Always pass token in URL for cross-domain compatibility
+    // CRITICAL: Pass token in URL for cross-domain compatibility
     let redirectUrl;
     
     if (user.next_action && user.next_action !== null) {
