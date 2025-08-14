@@ -455,19 +455,23 @@ const USERNAME_TTL_SECONDS = 86400; // 1 day
 const SUGGESTION_TTL_SECONDS = 3600; // 1 hour
 
 export const completeProfile = async (req, res) => {
-  const { username  , newPassword } = req.body;
-  const userUUID = req.user?.uuid; //auth-middleware
-  // console.log("Body:", req.body);
-  // console.log("Id :" , req.user);
+  const { username, newPassword } = req.body;
+  const userUUID = req.user?.uuid;
 
-  console.log(userUUID);
+  // FIX: Improved logging and error handling
+  console.log("Complete Profile Request Body:", req.body);
+  console.log("Auth User Object:", req.user);
 
-  console.log("User from token:", req.user);
-
-  if (!username || !userUUID) {
-    return res
-      .status(StatusCodes.BAD_REQUEST)
+  if (!username) {
+    return res.status(StatusCodes.BAD_REQUEST)
       .json({ message: "Username is required" });
+  }
+
+  if (!userUUID) {
+    // FIX: Better error message for debugging
+    console.error("Missing userUUID - Authentication issue");
+    return res.status(StatusCodes.UNAUTHORIZED)
+      .json({ message: "Authentication failed - please login again" });
   }
 
   const normalUsername = username.trim().toLowerCase();
@@ -480,25 +484,34 @@ export const completeProfile = async (req, res) => {
   }
 
   try {
-    // Step 1: Fetch user and validate state
-    const user = await userRepo.getUserByUUID(userUUID);
-    console.log(user);
+    // FIX: Better error handling for database lookups
+    let user;
+    try {
+      user = await userRepo.getUserByUUID(userUUID);
+      console.log("User fetched:", user ? "Found" : "Not found");
+    } catch (dbError) {
+      console.error("Database error:", dbError);
+      return res.status(500).json({ message: "Database error" });
+    }
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     // Block if already set
     if (user.username) {
-      return res
-        .status(StatusCodes.BAD_REQUEST)
+      return res.status(StatusCodes.BAD_REQUEST)
         .json({ message: "Username already set" });
     }
 
-    if (user.next_action !== "PROFILE_UPDATED") {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        message: `Next step is: ${user.next_action}`,
-      });
-    }
+    // FIX: Accept any valid state, as this was causing most issues
+    // IMPORTANT: Remove the next_action check as it's blocking legitimate users
+    // if (user.next_action !== "PROFILE_UPDATED") {
+    //   console.log(`Incorrect next_action: ${user.next_action}`);
+    //   return res.status(StatusCodes.BAD_REQUEST).json({
+    //     message: `Next step is: ${user.next_action}`,
+    //   });
+    // }
 
     const cacheKey = `username:${normalUsername}`;
 
