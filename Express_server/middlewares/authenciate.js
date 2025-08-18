@@ -2,10 +2,12 @@ import jwt from 'jsonwebtoken';
 import { secret } from '../config/jwt.js';
 import * as userRepo from '../utils/userQueryData.js';
 import crypto from 'crypto';
+import Messages from '../constants/messages.js';
+import StatusCodes from '../constants/statusCode.js';
 
 export default async (req, res, next) => {
   try {
-    // FIX: Better token extraction
+    // Better token extraction
     const authHeader = req.headers.authorization || '';
     const token = req.cookies?.token || (authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null);
 
@@ -13,8 +15,8 @@ export default async (req, res, next) => {
     console.log(`[Auth] Token found: ${!!token}`);
     
     if (!token) {
-      return res.status(401).json({
-        message: "Authentication required",
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        message: Messages.ERROR.AUTHENTICATION_REQUIRED || "Authentication required",
         code: "NO_TOKEN"
       });
     }
@@ -27,35 +29,35 @@ export default async (req, res, next) => {
     } catch (jwtError) {
       console.error(`[Auth] JWT Error: ${jwtError.message}`);
       if (jwtError.name === 'TokenExpiredError') {
-        return res.status(401).json({
-          message: "Token expired, please login again",
+        return res.status(StatusCodes.UNAUTHORIZED).json({
+          message: Messages.ERROR.TOKEN_EXPIRED || "Token expired, please login again",
           code: "TOKEN_EXPIRED"
         });
       }
-      return res.status(401).json({
-        message: "Invalid token",
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        message: Messages.ERROR.INVALID_OR_EXPIRED_TOKEN,
         code: "INVALID_TOKEN"
       });
     }
     
-    // FIX: Ensure we have the UUID from the token
+    // Ensure we have the UUID from the token
     const userUUID = decoded.uuid || decoded.userUUID;
     if (!userUUID) {
       console.error("[Auth] No UUID found in token");
-      return res.status(401).json({
-        message: "Invalid token format",
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        message: Messages.ERROR.INVALID_TOKEN_FORMAT || "Invalid token format",
         code: "INVALID_TOKEN_FORMAT"
       });
     }
     
-    // Get user data - this was failing
+    // Get user data
     try {
       const user = await userRepo.getUserByUUID(userUUID);
       
       if (!user) {
         console.error(`[Auth] User not found with UUID: ${userUUID}`);
-        return res.status(401).json({ 
-          message: "User not found",
+        return res.status(StatusCodes.UNAUTHORIZED).json({ 
+          message: Messages.ERROR.USER_NOT_FOUND,
           code: "USER_NOT_FOUND"
         });
       }
@@ -72,15 +74,15 @@ export default async (req, res, next) => {
       next();
     } catch (dbError) {
       console.error("[Auth] Database error:", dbError);
-      return res.status(500).json({
-        message: "Server error during authentication",
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        message: Messages.ERROR.SERVER_ERROR,
         code: "DB_ERROR"
       });
     }
   } catch (err) {
     console.error('[Auth] General error:', err);
-    return res.status(500).json({
-      message: "Authentication failed",
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: Messages.ERROR.AUTHENTICATION_FAILED || "Authentication failed",
       code: "AUTH_ERROR"
     });
   }
